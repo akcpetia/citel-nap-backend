@@ -1,0 +1,1 @@
+The VC API scripts folder here is a connection of scripts that call the Velocloud APIs, which was used as sample for the current project.
