@@ -152,23 +152,26 @@ class Link(models.Model, JSONReprMixin):
     modified = models.DateTimeField()
     effectiveState = models.CharField(max_length=20) # like STABLE
 
-class Database1(models.Model):
+class Database1(models.Model, JSONReprMixin):
     site_name = models.IntegerField() #really is a site ID (an integer number)
     interface_name = models.CharField(max_length=30) #like GE2
     link_name = models.IntegerField() # a numeric ID, again (edge ID?)
     link_mode = models.CharField(max_length=30) #Ej ACTIVE/BACKUP from link.linkMode
     number_of_interfaces = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
-class Database2(models.Model):
+class Database2(models.Model, JSONReprMixin):
     site_name = models.IntegerField() #really is a site ID (an integer number)
     interface_name = models.CharField(max_length=30) #like GE2
     interface_type = models.CharField(max_length=30)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
-class Database3(models.Model):
+class Database3(models.Model, JSONReprMixin):
     site_name = models.IntegerField() #really is a site ID (an integer number)
     interface_name = models.CharField(max_length=30) #like GE2
     event_type = models.IntegerField() # a numeric ID, again (edge ID?)
     outage_duration = models.DurationField()
     outage_data = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
 
