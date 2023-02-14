@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 requests = "*"
 pytz = "*"
+boto3 = "*"
+environ = "*"
+djangorestframework = "*"
 
 [dev-packages]
 

@@ -6,6 +6,8 @@ class ModelJSONEncoder(json.JSONEncoder):
     def default(self, o: typing.Any) -> typing.Any:
         if isinstance(o, datetime.datetime):
             return o.isoformat()
+        elif isinstance(o, datetime.timedelta):
+            return o.total_seconds() #returns the time in seconds
         else:
             return super().default(o)
 
@@ -15,6 +17,8 @@ class JSONReprMixin:
         jsond = self.__dict__.copy()
         del jsond['_state']
         return jsond
+
+
 class ZeroNullDateTime(models.DateTimeField, JSONReprMixin):
     """This field is similar to models.DateTimefield, but when it encounters a '0000-00-00 00:00:00' it deems
     it as a null value (and saves it as such).
@@ -71,7 +75,7 @@ class Ha(models.Model, JSONReprMixin):
 
 
 class Edge(models.Model, JSONReprMixin):
-    #id = models.IntegerField(primary_key=True)
+    edgeId = models.IntegerField(unique=True, help_text="The ID used in the Velocloud API")
     created = models.DateTimeField()
     enterpriseId = models.IntegerField()
     siteId = models.IntegerField()
@@ -98,7 +102,7 @@ class Edge(models.Model, JSONReprMixin):
     edgeState = models.CharField(max_length=20) # like CONNECTED
     edgeStateTime = ZeroNullDateTime(null=True)
     isLive = models.IntegerField() # like 0
-    systemUpSince = models.DateTimeField() # like 2020-01-21T00:13:11.000Z
+    systemUpSince = ZeroNullDateTime() # like 2020-01-21T00:13:11.000Z
     serviceUpSince = ZeroNullDateTime(null=True)
     lastContact = ZeroNullDateTime(null=True)
     serviceState = models.CharField(max_length=20)#like IN_SERVICE",
@@ -107,7 +111,7 @@ class Edge(models.Model, JSONReprMixin):
     haPreviousState= models.CharField(max_length=40)#UNCONFIGURED"
     haLastContact = ZeroNullDateTime(null=True)
     haSerialNumber = models.TextField(max_length=50, null=True)
-    modified = models.DateTimeField()
+    modified = ZeroNullDateTime()
     customInfo = models.TextField(null=True)
     isSoftwareVersionSupportedByVco = models.BooleanField(null=True)
     isHub = models.BooleanField()
@@ -169,7 +173,7 @@ class Database2(models.Model, JSONReprMixin):
 class Database3(models.Model, JSONReprMixin):
     site_name = models.IntegerField() #really is a site ID (an integer number)
     interface_name = models.CharField(max_length=30) #like GE2
-    event_type = models.IntegerField() # a numeric ID, again (edge ID?)
+    event_type = models.CharField(max_length=30) # link or edge
     outage_duration = models.DurationField()
     outage_data = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True, null=True)

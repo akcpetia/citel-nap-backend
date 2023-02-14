@@ -2,6 +2,11 @@ import json, requests, datetime
 from requests.adapters import HTTPAdapter, Retry
 retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
 
+def last_X_seconds(X):
+    dtnow = datetime.datetime.now()
+    interval = datetime.timedelta(seconds=X)
+    dtthen = dtnow - interval
+    return {"start": int(dtthen.timestamp()*1000), "end": int(dtnow.timestamp()*1000)}
 class VelocloudAPICaller:
     """Handles the API calls for a specific Velocloud network"""
     default_fields_to_request = [
@@ -23,13 +28,15 @@ class VelocloudAPICaller:
     def get_enterprise_addresses(self, enterpriseId=1):
         return self.call("enterprise/getEnterpriseAddresses", {"enterpriseId": enterpriseId})
 
-    def call(self, endpoint, params):
+    def call(self, endpoint, params, id: int=1, filters=None):
         request_data = {
             "jsonrpc": "2.0",
             "method": endpoint,
             "params": params,
-            "id": 1
+            "id": id
         }
+        if filters:
+            request_data['filters'] = filters
         server_url = f'https://{self.network["serverUrl"]}/portal/'
         response = self.session.post(server_url, data=json.dumps(request_data))
         assert response.status_code == 200
@@ -56,6 +63,13 @@ class VelocloudAPICaller:
         request_params = {
             "with": self.default_fields_to_request,
             "enterpriseId": enterpriseId,
+        }
+        return self.call("enterprise/getEnterpriseEdges", request_params)
+    def get_edge(self, enterpriseId, edgeId):
+
+        request_params = {
+            "enterpriseId": enterpriseId,
+            "edgeId": edgeId,
         }
         return self.call("enterprise/getEnterpriseEdges", request_params)
 
@@ -86,11 +100,7 @@ class VelocloudAPICaller:
 
     def get_enterprise_events_list(self, interval:list[datetime.datetime], enterpriseId: int, event:str):
         """Event can be, for instance, LINK_ALIVE, LINK_DEAD, EDGE_DOWN, EDGE_UP"""
-        request_data = {
-            "id": 10,
-            "jsonrpc": "2.0",
-            "method": "event/getEnterpriseEventsList",
-            "params": {
+        request_params = {
                 "enterpriseId": enterpriseId,
                 "interval": interval,
                 "filters": {
@@ -104,51 +114,71 @@ class VelocloudAPICaller:
                 },
                 "_count": True
             }
-        }
-        server_url = f'https://{self.network["serverUrl"]}/portal/'
-        response = self.session.post(server_url, data=json.dumps(request_data))
-        assert response.status_code == 200
-        return response.json()
+        call1 = self.call("event/getEnterpriseEventsList", request_params, id=1)
+        call2 = self.call("event/getEnterpriseEventsList", request_params, id=10)
+        return self.call("event/getEnterpriseEventsList", request_params)
 
 
-    def get_enterprise_events(self, enterpriseId: int):
+    def get_enterprise_events(self, enterpriseId: int, interval: dict):
         """Event can be, for instance, LINK_ALIVE, LINK_DEAD, EDGE_DOWN, EDGE_UP"""
-        request_data = {
-            "id": 10,
-            "jsonrpc": "2.0",
-            "method": "event/getEnterpriseEvents",
-            "params": {
-                "enterpriseId": enterpriseId,
-                "_count": True
-            }
+        request_params = {
+            "enterpriseId": enterpriseId,
+            "interval": interval,
+            "_count": True
         }
-        server_url = f'https://{self.network["serverUrl"]}/portal/'
-        response = self.session.post(server_url, data=json.dumps(request_data))
-        assert response.status_code == 200
-        return response.json()
+        return self.call("event/getEnterpriseEvents", params=request_params, id=10)
 
 
     def get_edge_events(self, enterpriseId: int, edge_id: int):
         """Event can be, for instance, LINK_ALIVE, LINK_DEAD, EDGE_DOWN, EDGE_UP"""
-        request_data = {
-            "id": 10,
-            "jsonrpc": "2.0",
-            "method": "event/getEnterpriseEvents",
-            "params": {
-                "enterpriseId": enterpriseId,
-                "filters": {
-                    "and": [
-                        {
-                            "field": "edgeId",
-                            "operator": "is",
-                            "value": edge_id
-                        }
-                    ]
-                },
-                "_count": True
-            }
+        request_params = {
+            "enterpriseId": enterpriseId,
+            "filters": {
+                "and": [
+                    {
+                        "field": "edgeId",
+                        "operator": "is",
+                        "value": edge_id
+                    }
+                ]
+            },
+            "_count": True
         }
-        server_url = f'https://{self.network["serverUrl"]}/portal/'
-        response = self.session.post(server_url, data=json.dumps(request_data))
-        assert response.status_code == 200
-        return response.json()
+        return self.call("event/getEnterpriseEvents", request_params, id=10)
+
+
+    def get_edge_link_metrics(self, enterpriseId: int, edge_id: int, interval: dict):
+        request_params = {
+            "enterpriseId": enterpriseId,
+            "edgeId": edge_id,
+            "interval": interval,
+            "_count": True
+        }
+        return self.call("metrics/getEdgeLinkMetrics", request_params, id=10)
+
+    def get_edge_status_metrics(self, enterpriseId: int, edge_id: int):
+        request_params = {
+            "enterpriseId": enterpriseId,
+            "edgeId": edge_id,
+            "_count": True
+        }
+        return self.call("metrics/getEdgeStatusMetrics", request_params, id=10)
+
+
+    def get_edge_app_link_metrics(self, enterpriseId: int, edge_id: int, interval: dict):
+        request_params = {
+            "enterpriseId": enterpriseId,
+            "id": edge_id,
+            "interval": interval,
+            "_count": True
+        }
+        return self.call("metrics/getEdgeAppLinkMetrics", request_params, id=10)
+
+    def get_edge_app_metrics(self, enterpriseId: int, edge_id: int, interval: dict):
+        request_params = {
+            "enterpriseId": enterpriseId,
+            "id": edge_id,
+            "interval": interval,
+            "_count": True
+        }
+        return self.call("metrics/getEdgeAppMetrics", request_params, id=10)

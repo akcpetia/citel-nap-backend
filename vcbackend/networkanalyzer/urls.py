@@ -17,10 +17,14 @@ from django.contrib import admin
 from django.urls import path
 from django.urls import include, path
 from rest_framework import routers
+from networkanalyzer import views
 from django.conf import settings
 
+router = routers.DefaultRouter()
+router.register(r'users', views.UserViewSet)
 API_ROOT = f"api/{settings.API_VERSION}"
+app_name = 'apí'
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path(f"{API_ROOT}/", include('networkanalyzer.urls', 'api')),
+    path("", include(router.urls)),
+    path(f'api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]

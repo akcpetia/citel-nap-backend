@@ -11,21 +11,26 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
+import dotenv, os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+#env = environ.Env()
+READ_DOT_ENV_FILE = bool(os.environ.get('DJANGO_READ_DOT_ENV_FILE', True))
+if READ_DOT_ENV_FILE:
+    dotenv.load_dotenv(BASE_DIR/'.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-j!t@&5fhhy7v!zyl+hps4bkwhg!2m2l*%7jg*7ys%gqnwzzsck"
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', default="django-insecure-j!t@&5fhhy7v!zyl+hps4bkwhg!2m2l*%7jg*7ys%gqnwzzsck")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', [])
 
 
 # Application definition
@@ -37,7 +42,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "networkanalyzer"
+    "networkanalyzer",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
@@ -106,6 +112,22 @@ USE_I18N = True
 
 USE_TZ = True
 
+AWS_KEY = os.environ.get("aws_access_key_id")
+AWS_SECRET = os.environ.get("aws_secret_access_key")
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+AWS_QUERYSTRING_AUTH = False
+_AWS_EXPIRY = 60 * 60 * 24 * 7
+
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": f"max-age={_AWS_EXPIRY}, s-maxage={_AWS_EXPIRY}, must-revalidate"}
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", default=None)
+AWS_S3_CUSTOM_DOMAIN = os.environ.get("DJANGO_AWS_S3_CUSTOM_DOMAIN", default=None)
+AWS_S3_DOMAIN = AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+#STATICFILES_STORAGE = "django_aws_lambda.utils.StaticRootS3Boto3Storage"
+#COLLECTFAST_STRATEGY = "collectfast.strategies.boto3.Boto3Strategy"
+#STATIC_URL = f"https://{AWS_S3_DOMAIN}/static/"
+#DEFAULT_FILE_STORAGE = "django_aws_lambda.utils.MediaRootS3Boto3Storage"
+#MEDIA_URL = f"https://{AWS_S3_DOMAIN}/media/"
+API_VERSION = os.environ["API_VERSION"]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
@@ -116,3 +138,10 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+#Django REST framework
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10
+}
