@@ -1,4 +1,4 @@
-import json, requests, datetime
+import json, requests, datetime, typing
 from requests.adapters import HTTPAdapter, Retry
 retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
 
@@ -42,6 +42,13 @@ class VelocloudAPICaller:
         assert response.status_code == 200
         return response.json()
 
+    def call_v2(self, endpoint, params):
+        # Makes a call to ApiV2
+        server_url = f'https://{self.network["serverUrl"]}/sdwan{endpoint}'
+        response = self.session.get(server_url)
+        assert response.status_code == 200
+        return response.json()
+
     def explore_enterprises(self, to_id=1000, missing_enterprises_tolerance=20):
         """Explores the enterprises by ID, trying from range 1 to {to_id}, but stopping when {missing_enterprises_tolerance} have not been found"""
         enterprises = {}
@@ -65,8 +72,11 @@ class VelocloudAPICaller:
             "enterpriseId": enterpriseId,
         }
         return self.call("enterprise/getEnterpriseEdges", request_params)
-    def get_edge(self, enterpriseId, edgeId):
 
+    def get_enterprise_edges_v2(self, enterprise):
+        return self.call_v2(f"/enterprises/{enterprise['logicalId']}/edges", {})
+
+    def get_edge(self, enterpriseId, edgeId):
         request_params = {
             "enterpriseId": enterpriseId,
             "edgeId": edgeId,
@@ -74,7 +84,6 @@ class VelocloudAPICaller:
         return self.call("enterprise/getEnterpriseEdges", request_params)
 
     def get_enterprise_edges_list(self, enterpriseId):
-
         request_params = {
             "with": self.default_fields_to_request,
             "enterpriseId": enterpriseId,
@@ -98,7 +107,7 @@ class VelocloudAPICaller:
         return self.call("enterprise/getEnterpriseEdges", request_params)
 
 
-    def get_enterprise_events_list(self, interval:list[datetime.datetime], enterpriseId: int, event:str):
+    def get_enterprise_events_list(self, interval:typing.List[datetime.datetime], enterpriseId: int, event:str):
         """Event can be, for instance, LINK_ALIVE, LINK_DEAD, EDGE_DOWN, EDGE_UP"""
         request_params = {
                 "enterpriseId": enterpriseId,

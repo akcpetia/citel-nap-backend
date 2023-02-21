@@ -1,0 +1,35 @@
+{
+  "name" : "ETL_example",
+  "description" : "",
+  "role" : "arn:aws:iam::849342623132:role/GlueAllAcess",
+  "executionProperty" : {
+    "maxConcurrentRuns" : 1
+  },
+  "command" : {
+    "name" : "pythonshell",
+    "scriptLocation" : "s3://aws-glue-assets-849342623132-us-east-1/scripts/ETL_example.py",
+    "pythonVersion" : "3.9"
+  },
+  "defaultArguments" : {
+    "--password" : "862$EC0yk8rG",
+    "--enable-job-insights" : "false",
+    "--job-language" : "python",
+    "--TempDir" : "s3://aws-glue-assets-849342623132-us-east-1/temporary/",
+    "library-set" : "analytics"
+  },
+  "connections" : {
+    "connections" : [ "rds-dev" ]
+  },
+  "maxRetries" : 0,
+  "allocatedCapacity" : 0,
+  "timeout" : 1,
+  "maxCapacity" : 0.0625,
+  "glueVersion" : "3.0",
+  "executionClass" : "STANDARD",
+  "sourceControlDetails" : {
+    "provider" : "GITHUB",
+    "repository" : "citel-nap-backend",
+    "branch" : "master",
+    "folder" : "etl_edges"
+  }
+}

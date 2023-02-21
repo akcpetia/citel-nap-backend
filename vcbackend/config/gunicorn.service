@@ -1,0 +1,18 @@
+[Unit]
+Description=gunicorn daemon
+After=network.target
+
+[Service]
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/citel-nap-backend/vcbackend
+
+#for now the Python path is hardcoded
+ExecStart=/home/ec2-user/citel-nap-backend/.venvpy37/bin/gunicorn \
+          --access-logfile =/home/ec2-user/citel-nap-backend/access.log \
+          --error-logfile =/home/ec2-user/citel-nap-backend/gunicorn_error.log \
+          --workers 3 \
+          -c config/gunicorn_prod.py
+
+[Install]
+WantedBy=multi-user.target

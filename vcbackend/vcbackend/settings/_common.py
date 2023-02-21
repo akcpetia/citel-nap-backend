@@ -11,12 +11,12 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
-import dotenv, os
+import dotenv, os, json
+from urllib import request
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-#env = environ.Env()
 READ_DOT_ENV_FILE = bool(os.environ.get('DJANGO_READ_DOT_ENV_FILE', True))
 if READ_DOT_ENV_FILE:
     dotenv.load_dotenv(BASE_DIR/'.env')
@@ -30,7 +30,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', default="django-insecure-j!t@&5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', [])
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -44,14 +44,20 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "networkanalyzer",
     "rest_framework",
+    "corsheaders",
+    'rest_framework_jwt',
+    'rest_framework_jwt.blacklist',
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "corsheaders.middleware.CorsPostCsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    'django.contrib.auth.middleware.RemoteUserMiddleware',
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -82,8 +88,12 @@ WSGI_APPLICATION = "vcbackend.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ["DB_NAME"],
+        'USER': os.environ["DB_USER"],
+        'PASSWORD': os.environ["DB_PASSWORD"],
+        'HOST': os.environ["DB_HOST"],
+        'PORT': '5432'
     }
 }
 
@@ -122,17 +132,17 @@ AWS_S3_OBJECT_PARAMETERS = {"CacheControl": f"max-age={_AWS_EXPIRY}, s-maxage={_
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", default=None)
 AWS_S3_CUSTOM_DOMAIN = os.environ.get("DJANGO_AWS_S3_CUSTOM_DOMAIN", default=None)
 AWS_S3_DOMAIN = AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-#STATICFILES_STORAGE = "django_aws_lambda.utils.StaticRootS3Boto3Storage"
-#COLLECTFAST_STRATEGY = "collectfast.strategies.boto3.Boto3Strategy"
-#STATIC_URL = f"https://{AWS_S3_DOMAIN}/static/"
-#DEFAULT_FILE_STORAGE = "django_aws_lambda.utils.MediaRootS3Boto3Storage"
-#MEDIA_URL = f"https://{AWS_S3_DOMAIN}/media/"
 API_VERSION = os.environ["API_VERSION"]
+
+#CORS
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR/"collected_static_files"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
@@ -143,5 +153,61 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 #Django REST framework
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 10,
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+    ),
+}
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.RemoteUserBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# AWS Cognito:
+COGNITO_AWS_REGION = 'us-east-1' # 'eu-central-1'
+COGNITO_USER_POOL = 'us-east-1_Ng0piu2YK'   # 'eu-central-1_xYzaq'
+
+# Provide this value if `id_token` is used for authentication (it contains 'aud' claim).
+# `access_token` doesn't have it, in this case keep the COGNITO_AUDIENCE empty
+COGNITO_AUDIENCE = '456c5q4djhreqcig2d5j1itafl'
+COGNITO_POOL_URL = None  # will be set few lines of code later, if configuration provided
+
+rsa_keys = {}
+# To avoid circular imports, we keep this logic here.
+# On django init we download jwks public keys which are used to validate jwt tokens.
+# For now there is no rotation of keys (seems like in Cognito decided not to implement it)
+if COGNITO_AWS_REGION and COGNITO_USER_POOL:
+    COGNITO_POOL_URL = 'https://cognito-idp.{}.amazonaws.com/{}'.format(COGNITO_AWS_REGION, COGNITO_USER_POOL)
+    pool_jwks_url = COGNITO_POOL_URL + '/.well-known/jwks.json'
+    jwks = json.loads(request.urlopen(pool_jwks_url).read())
+    rsa_keys = {key['kid']: json.dumps(key) for key in jwks['keys']}
+
+
+JWT_AUTH = {
+    'JWT_PAYLOAD_GET_USERNAME_HANDLER': 'vcbackend.utils.jwt.get_username_from_payload_handler',
+    'JWT_DECODE_HANDLER': 'vcbackend.utils.jwt.cognito_jwt_decode_handler',
+    'JWT_PUBLIC_KEY': rsa_keys,
+    'JWT_ALGORITHM': 'RS256',
+    'JWT_AUDIENCE': COGNITO_AUDIENCE,
+    'JWT_ISSUER': COGNITO_POOL_URL,
+    'JWT_AUTH_HEADER_PREFIX': 'Bearer',
+}
+
+#Logging:
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
 }
