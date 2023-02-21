@@ -1,0 +1,28 @@
+{
+  "name": "citel-nap-backend",
+  "version": "1.0.0",
+  "description": "Citel NAP backend Django project",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mhdev1/citel-nap-backend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mhdev1/citel-nap-backend/issues"
+  },
+  "homepage": "https://github.com/mhdev1/citel-nap-backend#readme",
+  "dependencies": {
+    "serverless-dotenv-plugin": "^4.0.2",
+    "serverless-prune-plugin": "^2.0.1",
+    "serverless-python-requirements": "^6.0.0",
+    "serverless-wsgi": "^3.0.1"
+  }
+}

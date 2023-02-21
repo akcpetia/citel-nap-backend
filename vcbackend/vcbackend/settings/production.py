@@ -1,0 +1,20 @@
+from ._common import *  # noqa
+import os
+DEBUG = False
+DATABASES["default"]["ATOMIC_REQUESTS"] = True  # noqa F405
+DATABASES["default"]["CONN_MAX_AGE"] = int(os.environ.get("CONN_MAX_AGE", 60))  # noqa F405
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = bool(os.environ.get("DJANGO_SECURE_SSL_REDIRECT", 0))
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_INCLUDE_SUBDOMAINS = bool(os.environ.get("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", 1))
+SECURE_HSTS_PRELOAD = bool(os.environ.get("DJANGO_SECURE_HSTS_PRELOAD", 1))
+SECURE_CONTENT_TYPE_NOSNIFF = bool(os.environ.get("DJANGO_SECURE_CONTENT_TYPE_NOSNIFF", 1))
+
+AWS_QUERYSTRING_AUTH = False
+_AWS_EXPIRY = 60 * 60 * 24 * 7
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": f"max-age={_AWS_EXPIRY}, s-maxage={_AWS_EXPIRY}, must-revalidate"}
+aws_s3_domain = AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+MEDIAFILES_LOCATION = "/media"
+
+STATICFILES_LOCATION = "/static"

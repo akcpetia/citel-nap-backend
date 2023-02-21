@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="2b7a8bdb-0e42-4eb8-9c46-b8c2f840abf0" name="freelancecuernavaca.com">
+        <fileTransfer accessType="SFTP" host="freelancecuernavaca.com" port="22" sshConfigId="94d0753b-02ad-42c7-b9e5-07158f36f02c" sshConfig="lucioric@freelancecuernavaca.com:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="4ff893a3-6706-4ea5-bfb6-85d81a60b5f2" name="EC2">
+        <fileTransfer accessType="SFTP" host="54.221.52.3" port="22" sshConfigId="778bfb96-7c49-4a01-abba-5f29a6b9567b" sshConfig="ec2-user@54.221.52.3:22 key" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
