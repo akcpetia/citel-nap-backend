@@ -22,8 +22,8 @@ from rest_framework_jwt.views import obtain_jwt_token
 router = routers.DefaultRouter()
 router.register('users', views.UserViewSet)
 router.register('GetStoreData', views.RDSEdgesViewSet)
-router.register('edges', views.EdgesViewSet)
 router.register('links', views.LinksViewSet)
+router.register('GetEvents', views.EventsViewSet)
 router.register('GetSiteData', views.SitesViewSet)
 router.register('Database3', views.Database3ViewSet)
 API_ROOT = f"api/{settings.API_VERSION}"

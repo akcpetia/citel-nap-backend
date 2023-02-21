@@ -47,8 +47,8 @@ class Site(models.Model, JSONReprMixin):
     contactPhone = models.CharField(max_length=30, null=True)
     contactMobile = models.CharField(max_length=30, null=True)
     contactEmail = models.CharField(max_length=100, null=True)
-    streetAddress = models.CharField(max_length=100, null=True)
-    streetAddress2 = models.CharField(max_length=100, null=True)
+    streetAddress = models.TextField(null=True)
+    streetAddress2 = models.TextField(null=True)
     city = models.CharField(max_length=100, null=True)
     state = models.CharField(max_length=100, null=True)
     postalCode = models.CharField(max_length=100, null=True)
@@ -59,8 +59,8 @@ class Site(models.Model, JSONReprMixin):
     locale = models.CharField(max_length=100, null=True)
     shippingSameAsLocation = models.IntegerField(null=True)
     shippingContactName = models.CharField(max_length=100, null=True)
-    shippingAddress = models.CharField(max_length=100, null=True)
-    shippingAddress2 = models.CharField(max_length=100, null=True)
+    shippingAddress = models.TextField(null=True)
+    shippingAddress2 = models.TextField(null=True)
     shippingCity = models.CharField(max_length=100, null=True)
     shippingState = models.CharField(max_length=100, null=True)
     shippingPostalCode = models.CharField(max_length=100, null=True)
@@ -124,6 +124,9 @@ class AbstractEdge(models.Model, JSONReprMixin):
     bastionState = models.TextField(null=True)
     index = models.IntegerField(null=True)
     summary = models.TextField()
+    #novel fields:
+    platformfirmwareversion = models.TextField(null=True, blank=True)
+    platformbuildnumber = models.TextField(null=True, blank=True)
 
 
 class Edge(AbstractEdge):
@@ -177,6 +180,10 @@ class RDSEdge(models.Model, JSONReprMixin):
     site_id = models.BigIntegerField(blank=True, null=True)
     bastionstate = models.TextField(db_column='bastionState', blank=True, null=True)  # Field name made lowercase.
     summary = models.JSONField(blank=True, null=True)
+    #novel fields:
+    platformfirmwareversion = models.TextField(null=True, blank=True)
+    platformbuildnumber = models.TextField(null=True, blank=True)
+    health = models.JSONField(null=True)
 
     class Meta:
         managed = False
@@ -195,6 +202,23 @@ class Device(models.Model, JSONReprMixin):
     class Meta:
         managed = False
         db_table = 'devices'
+
+
+class Event(models.Model, JSONReprMixin):
+    id = models.IntegerField(primary_key=True)
+    eventTime = ZeroNullDateTime()
+    event = models.CharField(max_length=30)
+    category = models.CharField(max_length=30)
+    severity = models.CharField(max_length=30)
+    message = models.TextField(null=True)
+    detail = models.JSONField(null=True)
+    enterpriseUsername = models.TextField(null=True)
+    edgeName = models.TextField(null=True)
+    segmentName = models.TextField(null=True)
+    edgeId = models.IntegerField(null=True)
+    edgeLogicalId = models.TextField(null=True)
+    enterpriseId = models.IntegerField(null=True)
+    enterpriseLogicalId = models.TextField(null=True)
 
 
 class Link(models.Model, JSONReprMixin):

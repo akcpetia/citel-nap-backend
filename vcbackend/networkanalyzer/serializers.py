@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from .models import Edge, RDSEdge, Site, Device, Link, Database3
+from .models import Edge, RDSEdge, Site, Device, Link, Database3, Event
 from rest_framework import serializers
 
 
@@ -36,6 +36,12 @@ class DeviceSerializer(serializers.ModelSerializer):
 class LinkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Link
+        exclude = []
+
+
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
         exclude = []
 
 

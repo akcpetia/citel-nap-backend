@@ -7,8 +7,8 @@ from django.contrib.auth.models import User
 from rest_framework import viewsets
 from rest_framework import permissions, response
 from networkanalyzer.serializers import UserSerializer, EdgeSerializer, RDSEdgeSerializer, SiteSerializer
-from networkanalyzer.serializers import DeviceSerializer, LinkSerializer, Database3Serializer
-from networkanalyzer.models import Edge, RDSEdge, Site, Device, Link, Database3
+from networkanalyzer.serializers import DeviceSerializer, LinkSerializer, Database3Serializer, EventSerializer
+from networkanalyzer.models import Edge, RDSEdge, Site, Device, Link, Database3, Event
 from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 
 
@@ -88,10 +88,18 @@ class LinksViewSet(viewsets.ModelViewSet):
     authentication_classes = [JSONWebTokenAuthentication]
 
 
+class EventsViewSet(viewsets.ModelViewSet):
+    queryset = Link.objects.all()
+    serializer_class = EventSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [JSONWebTokenAuthentication]
+
+
 class Database3ViewSet(viewsets.ModelViewSet):
     queryset = Database3.objects.all()
     serializer_class = Database3Serializer
     permission_classes = [permissions.IsAuthenticated]
+
 
 class OldEdgesViewSet(viewsets.ViewSet):
     def _get_s3_bucket(self):

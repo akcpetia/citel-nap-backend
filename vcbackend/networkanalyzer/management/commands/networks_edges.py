@@ -56,18 +56,26 @@ class Command(S3Command):
         else:
             edge['site'] = Site.objects.create(**edge['site'])
 
-        edge_find = Edge.objects.filter(activationKey=edge['activationKey'])
-
-        for link in edge['recentLinks']:
-            self.process_link(link)
+        #for link in edge['recentLinks']:
+        #    self.process_link(link)
         edge.pop('recentLinks')
+        klass = RDSEdge
+        new_edge = {}
+        for (key, value) in edge.items():
+            new_key = key.lower().replace("_", "")
+            new_edge[new_key] = value
+        new_edge["site_id"] = new_edge.pop("site").id
+        edge_find = klass.objects.filter(activationkey=new_edge['activationkey'])
         if edge_find.exists():
-            edgeobj = edge_find.get()
+            edgeobj = edge_find.first()
         else:
-            edgeobj = Edge.objects.create(**edge)
+            print("created")
+            edgeobj = klass.objects.create(**new_edge)
         edgeobj.save()
         return edgeobj
 
+    def save_RDS_edge(self, edge_dict):
+        pass
 
     def handle_edge(self, edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options):
         s3_path = f"velocloud/edges/{date_now.year}-{date_now.month}-{date_now.day}/{timestamp}"
@@ -111,6 +119,7 @@ class Command(S3Command):
         save_dict(bucket, f"{s3_path}/edge-{edge['id']}.json", edge)
 
     def handle(self, *args, **options):
+        edges_cnt = 0
         (bucket, timestamp, date_now, credentials) = self.bucket_timestamp_date_now_credentials()
 
         # that data should be converted to app parameters later
@@ -120,6 +129,7 @@ class Command(S3Command):
             enterprises = vcanalyzer.explore_enterprises()
             for enterprise in enterprises.values():
                 edges = vcanalyzer.get_enterprise_edges(enterprise['id'])
+                """
                 events = vcanalyzer.get_enterprise_events(enterprise['id'], interval)
                 severities_cnt = collections.Counter(evt['severity'] for evt in events['result']['data'])
                 if events['result']['metaData']['more']:
@@ -134,9 +144,18 @@ class Command(S3Command):
                         else:
                             break
                 #TODO to save the severities count
+                """
                 for edge in edges['result']:
+                    try:
+                        health_dict = vcanalyzer.call_v2(f"/enterprises/{enterprise['logicalId']}/edges/{edge['logicalId']}/healthStats", {})
+                    except:
+                        #does not save health node for this edge for now
+                        health_dict = None
+                    edge['health'] = json.dumps(health_dict)
                     edgeobj = self.save_edge_to_db(edge)
-                    self.handle_edge(edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options)
+                    edges_cnt+=1
+                    print("ech", edges_cnt)
+                    #self.handle_edge(edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options)
 
 
 
