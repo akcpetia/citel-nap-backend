@@ -17,7 +17,8 @@ source /home/ec2-user/citel-nap-backend/.venvpy37/bin/activate
 cd /home/ec2-user/citel-nap-backend/vcbackend
 python manage.py runserver 0:8000
 `
-" To update the code "
+
+To update the code:
 The code is served in production via gunicorn, using the service 
 file in vcbackend/config/gunicorn.service, and the configuration 
 file vcbackend/config/gunicorn_prod.py file, and in Nginx, using 
