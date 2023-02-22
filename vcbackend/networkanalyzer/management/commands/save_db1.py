@@ -30,7 +30,7 @@ class Command(S3Command):
                                                        link_mode=','.join(modes),
                                                        number_of_interfaces=len(interfaces))
                         fileobj = bucket.Object(f"{s3_path}/device-{edge['site']['id']}.json")
-                        db1dict = db1.json()
+                        db1dict = db1.dict()
                         fileobj.put(Body=json.dumps(db1dict, cls=ModelJSONEncoder, indent=4).encode('UTF-8'))
 
 

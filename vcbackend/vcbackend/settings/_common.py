@@ -28,9 +28,14 @@ if READ_DOT_ENV_FILE:
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', default="django-insecure-j!t@&5fhhy7v!zyl+hps4bkwhg!2m2l*%7jg*7ys%gqnwzzsck")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+env_allowed_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS')
+if env_allowed_hosts:
+    print("envah", env_allowed_hosts)
+    ALLOWED_HOSTS = env_allowed_hosts.split(",")
+else:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '54.221.52.3', 'ec2-54-221-52-3.compute-1.amazonaws.com', 'api.cnis.io']
 
 
 # Application definition
@@ -45,6 +50,7 @@ INSTALLED_APPS = [
     "networkanalyzer",
     "rest_framework",
     "corsheaders",
+    "drf_yasg",
     'rest_framework_jwt',
     'rest_framework_jwt.blacklist',
 ]
@@ -122,6 +128,7 @@ USE_I18N = True
 
 USE_TZ = True
 
+# AWS:
 AWS_KEY = os.environ.get("aws_access_key_id")
 AWS_SECRET = os.environ.get("aws_secret_access_key")
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
@@ -195,6 +202,7 @@ JWT_AUTH = {
     'JWT_AUDIENCE': COGNITO_AUDIENCE,
     'JWT_ISSUER': COGNITO_POOL_URL,
     'JWT_AUTH_HEADER_PREFIX': 'Bearer',
+    'JWT_VERIFY_EXPIRATION': False,
 }
 
 #Logging:

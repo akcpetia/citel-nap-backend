@@ -23,15 +23,14 @@ class Command(S3Command):
         elsm_s3_path = f"velocloud/edge_link_status_metrics/{date_now.year}-{date_now.month}-{date_now.day}/{timestamp}"
         ealm_s3_path = f"velocloud/edge_app_link_metrics/{date_now.year}-{date_now.month}-{date_now.day}/{timestamp}"
         eam_s3_path = f"velocloud/edge_app_metrics/{date_now.year}-{date_now.month}-{date_now.day}/{timestamp}"
-
-        linkms = vcanalyzer.get_edge_link_metrics(enterprise['id'], edge['id'], interval)
-        linkas = vcanalyzer.get_edge_app_metrics(enterprise['id'], edge['id'], interval)
-        linkss = vcanalyzer.get_edge_status_metrics(enterprise['id'], edge['id'])
-        linkals = vcanalyzer.get_edge_app_link_metrics(enterprise['id'], edge['id'], interval)
-        save_dict(bucket, f"{elm_s3_path}/edge-{edge['id']}.json", linkms['result'])
-        save_dict(bucket, f"{elsm_s3_path}/edge-{edge['id']}.json", linkss['result'])
-        save_dict(bucket, f"{ealm_s3_path}/edge-{edge['id']}.json", linkals['result'])
-        save_dict(bucket, f"{eam_s3_path}/edge-{edge['id']}.json", linkas['result'])
+        linkms = vcanalyzer.get_edge_link_metrics(enterprise['id'], edge['edgeId'], interval)
+        linkas = vcanalyzer.get_edge_app_metrics(enterprise['id'], edge['edgeId'], interval)
+        linkss = vcanalyzer.get_edge_status_metrics(enterprise['id'], edge['edgeId'])
+        linkals = vcanalyzer.get_edge_app_link_metrics(enterprise['id'], edge['edgeId'], interval)
+        save_dict(bucket, f"{elm_s3_path}/edge-{edge['edgeId']}.json", linkms['result'])
+        save_dict(bucket, f"{elsm_s3_path}/edge-{edge['edgeId']}.json", linkss['result'])
+        save_dict(bucket, f"{ealm_s3_path}/edge-{edge['edgeId']}.json", linkals['result'])
+        save_dict(bucket, f"{eam_s3_path}/edge-{edge['edgeId']}.json", linkas['result'])
         return (linkms, linkas, linkss, linkals)
 
 
@@ -50,21 +49,25 @@ class Command(S3Command):
     def save_edge_to_db(self, edge):
         # The edge 'id' fields are being deleted, because id is assigned in a non-unique way by the Velocloud API
         edge['edgeId'] = edge.pop('id', None)  # deletes the edge id field if present
-        site_id_finds = Site.objects.filter(id=edge['site']['id'])
-        if site_id_finds.exists():
-            edge['site'] = site_id_finds.get()
-        else:
-            edge['site'] = Site.objects.create(**edge['site'])
+        if 'site' in edge:
+            site_id_finds = Site.objects.filter(id=edge['site']['id'])
+            if site_id_finds.exists():
+                edge['site'] = site_id_finds.get()
+            else:
+                edge['site'] = Site.objects.create(**edge['site'])
 
-        #for link in edge['recentLinks']:
-        #    self.process_link(link)
-        edge.pop('recentLinks')
+        recent_links = edge.pop('recentLinks')
+        if recent_links is not None:
+            for link in recent_links:
+                self.process_link(link)
+
         klass = RDSEdge
         new_edge = {}
         for (key, value) in edge.items():
             new_key = key.lower().replace("_", "")
             new_edge[new_key] = value
-        new_edge["site_id"] = new_edge.pop("site").id
+        if 'site' in new_edge:
+            new_edge["site_id"] = new_edge.pop("site").id
         edge_find = klass.objects.filter(activationkey=new_edge['activationkey'])
         if edge_find.exists():
             edgeobj = edge_find.first()
@@ -74,14 +77,19 @@ class Command(S3Command):
         edgeobj.save()
         return edgeobj
 
-    def save_RDS_edge(self, edge_dict):
-        pass
-
     def handle_edge(self, edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options):
+        edgeobj = self.save_edge_to_db(edge)
+        try:
+            health_dict = vcanalyzer.call_v2(f"/enterprises/{enterprise['logicalId']}/edges/{edge['logicalId']}/healthStats", {})
+        except:
+            # does not save health node for this edge for now
+            health_dict = None
+        edge['health'] = json.dumps(health_dict)
         s3_path = f"velocloud/edges/{date_now.year}-{date_now.month}-{date_now.day}/{timestamp}"
         link_states_count = collections.Counter()
-        for link in edge['recentLinks']:
-            link_states_count[link['state']] += 1
+        if "recentLinks" in edge:
+            for link in edge['recentLinks']:
+                link_states_count[link['state']] += 1
 
         edge_states_count = collections.Counter()
         edge_models_count = collections.Counter()
@@ -116,10 +124,14 @@ class Command(S3Command):
                                        edge_models_count=edge_models_count,
                                        link_states_count=link_states_count,
                                        edge_apps_metrics=eam_data, edge_link_metrics=elm_summary)
-        save_dict(bucket, f"{s3_path}/edge-{edge['id']}.json", edge)
+        edgeobj.summary = edge["summary"]
+        edgeobj.save()
+        save_dict(bucket, f"{s3_path}/edge-{edge['edgeId']}.json", edge)
+        self.edges_cnt+=1
+        print("Edges processed:", self.edges_cnt)
 
     def handle(self, *args, **options):
-        edges_cnt = 0
+        self.edges_cnt = 0
         (bucket, timestamp, date_now, credentials) = self.bucket_timestamp_date_now_credentials()
 
         # that data should be converted to app parameters later
@@ -129,7 +141,6 @@ class Command(S3Command):
             enterprises = vcanalyzer.explore_enterprises()
             for enterprise in enterprises.values():
                 edges = vcanalyzer.get_enterprise_edges(enterprise['id'])
-                """
                 events = vcanalyzer.get_enterprise_events(enterprise['id'], interval)
                 severities_cnt = collections.Counter(evt['severity'] for evt in events['result']['data'])
                 if events['result']['metaData']['more']:
@@ -144,18 +155,8 @@ class Command(S3Command):
                         else:
                             break
                 #TODO to save the severities count
-                """
                 for edge in edges['result']:
-                    try:
-                        health_dict = vcanalyzer.call_v2(f"/enterprises/{enterprise['logicalId']}/edges/{edge['logicalId']}/healthStats", {})
-                    except:
-                        #does not save health node for this edge for now
-                        health_dict = None
-                    edge['health'] = json.dumps(health_dict)
-                    edgeobj = self.save_edge_to_db(edge)
-                    edges_cnt+=1
-                    print("ech", edges_cnt)
-                    #self.handle_edge(edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options)
+                    self.handle_edge(edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options)
 
 
 

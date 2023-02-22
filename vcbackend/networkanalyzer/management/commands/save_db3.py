@@ -71,7 +71,7 @@ class Command(S3Command):
                                                                    outage_duration=down_duration, outage_data=outage_data)
                                     death_s = None
                                     fileobj = bucket.Object(f"{s3_path}/alive-event-{event['id']}.json")
-                                    fileobj.put(Body=json.dumps(db3.json(), cls=ModelJSONEncoder, indent=4).encode('UTF-8'))
+                                    fileobj.put(Body=json.dumps(db3.dict(), cls=ModelJSONEncoder, indent=4).encode('UTF-8'))
 
     def handle(self, *args, **options):
         #The S3 urls saved to are like s3://citel-nap/velocloud/db3/2023-2-6/1675714313.811725/alive-event-{event['id']}.json

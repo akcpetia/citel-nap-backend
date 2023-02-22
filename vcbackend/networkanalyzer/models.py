@@ -9,13 +9,15 @@ class ModelJSONEncoder(json.JSONEncoder):
             return o.isoformat()
         elif isinstance(o, datetime.timedelta):
             return o.total_seconds() #returns the time in seconds
+        elif isinstance(o, models.Model):
+            return o.dict()
         else:
             return super().default(o)
 
 
 class JSONReprMixin:
     "Allows representing the model as a JSON serializable object"
-    def json(self):
+    def dict(self):
         jsond = self.__dict__.copy()
         del jsond['_state']
         return jsond

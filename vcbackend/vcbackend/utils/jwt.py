@@ -25,7 +25,7 @@ def cognito_jwt_decode_handler(token):
     Almost the same as default 'rest_framework_jwt.utils.jwt_decode_handler', but 'secret_key' feature is skipped
     """
     options = {'verify_exp': api_settings.JWT_VERIFY_EXPIRATION}
-    logger.error("vakid")
+    logger.error(f"executing cognito_jwt_decode_handler, with options: {options}")
     try:
         unverified_header = jwt.get_unverified_header(token)
     except Exception as exc:

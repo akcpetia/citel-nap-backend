@@ -4,8 +4,7 @@ import dotenv, boto3, datetime, re, io, json
 
 # Create your views here.
 from django.contrib.auth.models import User
-from rest_framework import viewsets
-from rest_framework import permissions, response
+from rest_framework import viewsets, permissions, response
 from networkanalyzer.serializers import UserSerializer, EdgeSerializer, RDSEdgeSerializer, SiteSerializer
 from networkanalyzer.serializers import DeviceSerializer, LinkSerializer, Database3Serializer, EventSerializer
 from networkanalyzer.models import Edge, RDSEdge, Site, Device, Link, Database3, Event
@@ -13,7 +12,7 @@ from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 
 
 def merge_in_site_info(data_dict, site):
-    sitejs = site.json()
+    sitejs = site.dict()
     for (siteprop, siteprop_value) in sitejs.items():
         if siteprop not in ('id', 'created', 'name', 'modified', 'logicalId'):
             data_dict[siteprop] = siteprop_value
@@ -38,11 +37,12 @@ class RDSEdgesViewSet(viewsets.ModelViewSet):
         qs = self.get_queryset()
         element = qs.filter(pk=pk).get()
         site = Site.objects.get(id=element.site_id)
-        eljs = element.json()
+        eljs = element.dict()
         merge_in_site_info(eljs, site)
         eljs['supportTickets'] = {'open': 0, 'minor': 0, 'request': 0}
         eljs['processedDays'] = 1 #TODO put this value based in the processed days
         return response.Response(data=eljs)
+
 
 class EdgesViewSet(viewsets.ModelViewSet):
     queryset = Edge.objects.all()
@@ -68,7 +68,7 @@ class EdgesViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, pk=None):
         qs = self.get_queryset()
         element = qs.filter(id=int(pk)).get()#to do use id and pk adequately
-        eljs = element.json()
+        eljs = element.dict()
         merge_in_site_info(eljs, element.site)
         eljs['supportTickets'] = {'open': 0, 'minor': 0, 'request': 0}
         eljs['processedDays'] = 1 #TODO put this value based in the processed days
@@ -89,7 +89,7 @@ class LinksViewSet(viewsets.ModelViewSet):
 
 
 class EventsViewSet(viewsets.ModelViewSet):
-    queryset = Link.objects.all()
+    queryset = Event.objects.all()
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [JSONWebTokenAuthentication]
