@@ -33,6 +33,7 @@ class RDSEdgesViewSet(viewsets.ModelViewSet):
     serializer_class = RDSEdgeSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    # we need a filter on siteid for edges and links
     def retrieve(self, request, pk=None):
         qs = self.get_queryset()
         element = qs.filter(pk=pk).get()
@@ -43,16 +44,44 @@ class RDSEdgesViewSet(viewsets.ModelViewSet):
         eljs['processedDays'] = 1 #TODO put this value based in the processed days
         return response.Response(data=eljs)
 
+    def list(self, request, pk=None):
+        qs = self.get_queryset()
+        filter_params = {}
+        if pk is not None:
+            filter_params['id'] = pk
+        siteId = self.request.query_params.get('siteId')
+        if siteId:
+            filter_params['siteId'] = siteId
+        if len(filter_params) > 0:
+            qs = qs.filter(**filter_params)
+
+        fqs = self.filter_queryset(qs)
+        page = self.paginate_queryset(fqs)
+
+        serializer = self.get_serializer(page, many=True)
+        for element in serializer.data:
+            site = Site.objects.get(id=element['site'])
+            merge_in_site_info(element, site)
+            element['supportTickets'] = {'open': 0, 'minor': 0, 'request': 0}
+            element['processedDays'] = 1  # TODO put this value based in the processed days
+        return self.get_paginated_response(serializer.data)
 
 class EdgesViewSet(viewsets.ModelViewSet):
+    # this class should no longer be used, because we are using now an updated database table
     queryset = Edge.objects.all()
     serializer_class = EdgeSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request, pk=None):
         qs = self.get_queryset()
+        filter_params = {}
         if pk is not None:
-            qs = qs.filter(id=pk)
+            filter_params['id'] = pk
+        siteId = self.request.query_params.get('siteId')
+        if siteId:
+            filter_params['siteId'] = siteId
+        if len(filter_params) > 0:
+            qs = qs.filter(**filter_params)
 
         fqs = self.filter_queryset(qs)
         page = self.paginate_queryset(fqs)

@@ -34,12 +34,15 @@ class Command(S3Command):
         return (linkms, linkas, linkss, linkals)
 
 
-    def process_link(self, link):
+    def process_link(self, link, edgeId):
         """Processes a link, returning a Link object"""
         link.pop('id', None)  # deletes the id field if None
+        link['edgeId'] = edgeId
         extant_links = Link.objects.filter(logicalId=link["logicalId"], internalId=link["internalId"])
         if extant_links.exists():
             extant_link = extant_links.get()
+            extant_link.edgeId = edgeId
+            extant_link.save()
             assert extant_link.internalId == link["internalId"], (extant_link.logicalId, link)
             return extant_link
         else:
@@ -56,10 +59,10 @@ class Command(S3Command):
             else:
                 edge['site'] = Site.objects.create(**edge['site'])
 
-        recent_links = edge.pop('recentLinks')
+        recent_links = edge.pop('recentLinks', None)#pops the recentLinks edge item, if it exists
         if recent_links is not None:
             for link in recent_links:
-                self.process_link(link)
+                self.process_link(link, edge['edgeId'])
 
         klass = RDSEdge
         new_edge = {}
@@ -68,7 +71,7 @@ class Command(S3Command):
             new_edge[new_key] = value
         if 'site' in new_edge:
             new_edge["site_id"] = new_edge.pop("site").id
-        edge_find = klass.objects.filter(activationkey=new_edge['activationkey'])
+        edge_find = klass.objects.filter(logicalid=new_edge['logicalid'])
         if edge_find.exists():
             edgeobj = edge_find.first()
         else:

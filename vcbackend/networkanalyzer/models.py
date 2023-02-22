@@ -254,6 +254,7 @@ class Link(models.Model, JSONReprMixin):
     serviceState = models.TextField() # like IN_SERVICE
     modified = ZeroNullDateTime()
     effectiveState = models.TextField() # like STABLE
+    edgeId = models.IntegerField(null=True, default=None)
 
 
 class Database1(models.Model, JSONReprMixin):
