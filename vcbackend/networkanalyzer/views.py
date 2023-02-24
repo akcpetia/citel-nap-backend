@@ -18,6 +18,16 @@ def merge_in_site_info(data_dict, site):
             data_dict[siteprop] = siteprop_value
     data_dict['site'] = None
 
+def get_common_filters(request):
+    filter_params = {}
+    siteId = request.query_params.get('siteId')
+    if siteId:
+        filter_params['site_id'] = siteId
+    logicalId = request.query_params.get('logicalId')
+    if logicalId:
+        filter_params['logicalid'] = logicalId
+    return filter_params
+
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -49,9 +59,7 @@ class RDSEdgesViewSet(viewsets.ModelViewSet):
         filter_params = {}
         if pk is not None:
             filter_params['id'] = pk
-        siteId = self.request.query_params.get('siteId')
-        if siteId:
-            filter_params['siteId'] = siteId
+        filter_params.update(get_common_filters(self.request))
         if len(filter_params) > 0:
             qs = qs.filter(**filter_params)
 
@@ -60,7 +68,7 @@ class RDSEdgesViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(page, many=True)
         for element in serializer.data:
-            site = Site.objects.get(id=element['site'])
+            site = Site.objects.get(id=element['site_id'])
             merge_in_site_info(element, site)
             element['supportTickets'] = {'open': 0, 'minor': 0, 'request': 0}
             element['processedDays'] = 1  # TODO put this value based in the processed days
@@ -77,18 +85,14 @@ class EdgesViewSet(viewsets.ModelViewSet):
         filter_params = {}
         if pk is not None:
             filter_params['id'] = pk
-        siteId = self.request.query_params.get('siteId')
-        if siteId:
-            filter_params['siteId'] = siteId
-        if len(filter_params) > 0:
-            qs = qs.filter(**filter_params)
+        filter_params.update(get_common_filters(self.request))
 
         fqs = self.filter_queryset(qs)
         page = self.paginate_queryset(fqs)
 
         serializer = self.get_serializer(page, many=True)
         for element in serializer.data:
-            site = Site.objects.get(id=element['site'])
+            site = Site.objects.get(id=element['site_id'])
             merge_in_site_info(element, site)
             element['supportTickets'] = {'open': 0, 'minor': 0, 'request': 0}
             element['processedDays'] = 1  # TODO put this value based in the processed days

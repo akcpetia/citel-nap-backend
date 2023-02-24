@@ -15,6 +15,17 @@ class ModelJSONEncoder(json.JSONEncoder):
             return super().default(o)
 
 
+class ModelJSONDecoder(json.JSONDecoder):
+    def decode(self, s: str, _w: typing.Callable[..., typing.Any] = ...) -> typing.Any:
+        if isinstance(s, dict):
+            return s
+        else:
+            if _w is Ellipsis:
+                return super().decode(s)
+            else:
+                return super().decode(s, _w)
+
+
 class JSONReprMixin:
     "Allows representing the model as a JSON serializable object"
     def dict(self):
@@ -182,10 +193,16 @@ class RDSEdge(models.Model, JSONReprMixin):
     site_id = models.BigIntegerField(blank=True, null=True)
     bastionstate = models.TextField(db_column='bastionState', blank=True, null=True)  # Field name made lowercase.
     summary = models.JSONField(blank=True, null=True)
-    #novel fields:
-    platformfirmwareversion = models.TextField(null=True, blank=True)
-    platformbuildnumber = models.TextField(null=True, blank=True)
-    health = models.JSONField(null=True)
+    #novel fields, @Matvei FYI:
+    platformFirmwareVersion = models.TextField(null=True, blank=True)
+    platformBuildNumber = models.TextField(null=True, blank=True)
+    health = models.JSONField(null=True, decoder=ModelJSONDecoder)
+    eventTime = models.TextField(null=True)
+    # {'modemfirmwareversion', 'lteregion', 'modembuildnumber'}
+    modemFirmwareVersion = models.TextField(null=True)
+    lteRegion = models.TextField(null=True)
+    modemBuildNumber = models.TextField(null=True)
+
 
     class Meta:
         managed = False

@@ -2,8 +2,9 @@ import collections, json
 from networkanalyzer.network_apis import velocloud
 from networkanalyzer.management.commands._private import load_velocloud_API_tokens, S3Command
 from networkanalyzer.models import Network, Site, Link, Edge, Ha, ModelJSONEncoder, RDSEdge
+import logging
 
-
+logger = logging.getLogger(__name__)
 def total_bytes_and_apps_list(apps_list):
     total_bytes = sum(app['totalBytes'] for app in apps_list)
     return {"total_bytes": total_bytes, "apps": apps_list}
@@ -49,6 +50,18 @@ class Command(S3Command):
             lc = Link.objects.create(**link)
             return lc
 
+    def create_edge(self, edge_dict):
+        try:
+            edgeobj = RDSEdge.objects.create(**edge_dict)
+            edgeobj.save()
+            return edgeobj
+        except TypeError:
+            field_names = {x.name for x in RDSEdge._meta.fields}
+            fields_not_in_db = set(edge_dict.keys()) - field_names
+            logger.exception(f"Fields not present in the RDSEdge database: {fields_not_in_db}")
+        else:
+            logger.info("Created edge")
+
     def save_edge_to_db(self, edge):
         # The edge 'id' fields are being deleted, because id is assigned in a non-unique way by the Velocloud API
         edge['edgeId'] = edge.pop('id', None)  # deletes the edge id field if present
@@ -71,13 +84,19 @@ class Command(S3Command):
             new_edge[new_key] = value
         if 'site' in new_edge:
             new_edge["site_id"] = new_edge.pop("site").id
+        if 'logicalid' not in new_edge:
+            edgeobj = self.create_edge(new_edge)
+            return edgeobj
         edge_find = klass.objects.filter(logicalid=new_edge['logicalid'])
         if edge_find.exists():
-            edgeobj = edge_find.first()
+            logger.info(f"efind {new_edge['logicalid']}")
+            try:
+                edgeobj = edge_find.first()
+            except Exception as e:
+                edge_find.delete()
+                edgeobj = self.create_edge(new_edge)
         else:
-            print("created")
-            edgeobj = klass.objects.create(**new_edge)
-        edgeobj.save()
+            edgeobj = self.create_edge(new_edge)
         return edgeobj
 
     def handle_edge(self, edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options):
@@ -87,7 +106,6 @@ class Command(S3Command):
         except:
             # does not save health node for this edge for now
             health_dict = None
-        edge['health'] = json.dumps(health_dict)
         s3_path = f"velocloud/edges/{date_now.year}-{date_now.month}-{date_now.day}/{timestamp}"
         link_states_count = collections.Counter()
         if "recentLinks" in edge:
@@ -123,15 +141,17 @@ class Command(S3Command):
         eam_data = {"top_apps": total_bytes_and_apps_list(eam_apps[0:options['num_top_apps']]),
                     "apps_by_category": eam_apps_by_category_totalized}
 
+        edge['health'] = json.dumps(health_dict)
         edge["summary"] = dict(edge_states_count=edge_states_count,
                                        edge_models_count=edge_models_count,
                                        link_states_count=link_states_count,
                                        edge_apps_metrics=eam_data, edge_link_metrics=elm_summary)
+        edgeobj.health = edge["health"]
         edgeobj.summary = edge["summary"]
         edgeobj.save()
         save_dict(bucket, f"{s3_path}/edge-{edge['edgeId']}.json", edge)
         self.edges_cnt+=1
-        print("Edges processed:", self.edges_cnt)
+        logger.info(f"Edges processed: {self.edges_cnt}")
 
     def handle(self, *args, **options):
         self.edges_cnt = 0
@@ -150,8 +170,8 @@ class Command(S3Command):
                     next_page_link = events['result']['metaData']['nextPageLink']
                     while True:
                         cv2 = vcanalyzer.call_v2(f"/enterprises/{enterprise['logicalId']}/events?nextPageLink={next_page_link}", {})
-                        for edge in cv2['data']:
-                            self.handle_edge(edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options)
+                        severities_cnt.update(collections.Counter(evt['severity'] for evt in cv2['data']))
+
                         severities_cnt.update(evt['severity'] for evt in cv2['data'])
                         if cv2['metaData']['more']:
                             next_page_link = cv2['metaData']['nextPageLink']
@@ -159,7 +179,10 @@ class Command(S3Command):
                             break
                 #TODO to save the severities count
                 for edge in edges['result']:
-                    self.handle_edge(edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options)
+                    try:
+                        self.handle_edge(edge, enterprise, vcanalyzer, bucket, date_now, timestamp, interval, options)
+                    except:
+                        logger.exception(f"Error handling the edge {edge}")
 
 
 
